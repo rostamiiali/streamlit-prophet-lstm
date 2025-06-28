@@ -120,8 +120,12 @@ hybrid_forecast = pd.Series(hybrid_forecast, index=test_df.index).clip(lower=0)
 # Smooth Hybrid forecast (rolling mean, window=2)
 hybrid_forecast = hybrid_forecast.rolling(window=2, min_periods=1).mean()
 combined_df = pd.DataFrame({'ds': test_df.index, 'Hybrid': hybrid_forecast, 'Actual': test_df['y']})
-hybrid_rmse = np.sqrt(mean_squared_error(combined_df['Actual'], combined_df['Hybrid']))
-hybrid_mae = mean_absolute_error(combined_df['Actual'], combined_df['Hybrid'])
+if combined_df['Hybrid'].isnull().any() or combined_df['Actual'].isnull().any():
+    st.warning("⚠️ Hybrid forecast could not be evaluated due to missing values. Try increasing the forecast horizon.")
+    hybrid_rmse = hybrid_mae = np.nan
+else:
+    hybrid_rmse = np.sqrt(mean_squared_error(combined_df['Actual'], combined_df['Hybrid']))
+    hybrid_mae = mean_absolute_error(combined_df['Actual'], combined_df['Hybrid'])
 st.write(f"### Hybrid Forecast RMSE: {hybrid_rmse:.2f}")
 st.write(f"### Hybrid Forecast MAE: {hybrid_mae:.2f}")
 st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{hybrid_mae:.0f} units/month. Lower values = better accuracy.")
