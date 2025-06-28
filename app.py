@@ -281,7 +281,8 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 model.train()
 for epoch in range(50):
     for x, y in train_loader:
-        x, y = x.squeeze(-1).permute(1, 0, 2), y.squeeze(-1)
+        x = x.permute(1, 0, 2)
+        y = y.squeeze(-1)
         output = model(x)
         loss = criterion(output.squeeze(), y.squeeze())
         optimizer.zero_grad()
