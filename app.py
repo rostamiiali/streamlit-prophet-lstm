@@ -304,13 +304,12 @@ lstm_forecast = np.clip(lstm_forecast, 0, None)
 lstm_dates = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=forecast_horizon, freq='MS')
 lstm_df = pd.DataFrame({"ds": lstm_dates, "y": lstm_forecast})
 
-    # Transformer RMSE and MAE (using test_df if available)
-    # Transformer RMSE and MAE (using test_df if available)
-    if len(test_df) == forecast_horizon:
-        lstm_rmse = np.sqrt(mean_squared_error(test_df['y'], lstm_forecast))
-        lstm_mae = mean_absolute_error(test_df['y'], lstm_forecast))
-        st.write(f"### Transformer Forecast RMSE: {lstm_rmse:.2f}")
-        st.write(f"### Transformer Forecast MAE: {lstm_mae:.2f}")
+# Transformer RMSE and MAE (using test_df if available)
+if len(test_df) == forecast_horizon:
+    lstm_rmse = np.sqrt(mean_squared_error(test_df['y'], lstm_forecast))
+    lstm_mae = mean_absolute_error(test_df['y'], lstm_forecast)
+    st.write(f"### Transformer Forecast RMSE: {lstm_rmse:.2f}")
+    st.write(f"### Transformer Forecast MAE: {lstm_mae:.2f}")
 
 # Plot Combined Forecasts
 st.write("### 📊 Forecast Comparison (All Models)")
