@@ -16,10 +16,10 @@ from torch.utils.data import DataLoader, TensorDataset
 st.title("📈 Flu Vaccination Forecasting App")
 
 # Forecast Range
-forecast_horizon = st.slider("Select forecast horizon (months)", 6, 36, 12, key="horizon_slider")
+forecast_horizon = st.slider("Select forecast horizon (months)", 6, 36, 12, key="slider_forecast")
 
 # Option to Upload or Generate Data
-upload_option = st.radio("Choose input method:", ("Upload CSV", "Use Sample Data"))
+upload_option = st.radio("Choose input method:", ("Upload CSV", "Use Sample Data"), key="radio_input")
 
 
 # Load Data
@@ -318,7 +318,17 @@ st.write("### 📊 Forecast Comparison (All Models)")
 fig_combined, ax_combined = plt.subplots()
 ax_combined.plot(df['ds'], df['y'], label='Actual', color='black')
 ax_combined.plot(forecast_df.index, forecast_df['yhat'], label='Prophet Forecast', linestyle='--', color='blue')
-ax_combined.plot(lstm_df['ds'], lstm_df['y'], label='LSTM Forecast', linestyle=':', color='green')
+ax_combined.plot(lstm_df['ds'], lstm_df['y'], label='Transformer Forecast', linestyle=':', color='green')
+# Add a dedicated plot for Transformer forecast below the training loop
+st.write("### Transformer Forecast vs Actual")
+fig_transformer, ax_transformer = plt.subplots()
+ax_transformer.plot(test_df.index, test_df['y'], label='Actual', color='black')
+ax_transformer.plot(lstm_df['ds'], lstm_df['y'], label='Transformer Forecast', linestyle='--', color='green')
+ax_transformer.set_title("Transformer Forecast vs Actual")
+ax_transformer.set_xlabel("Date")
+ax_transformer.set_ylabel("Vaccinations")
+ax_transformer.legend()
+st.pyplot(fig_transformer)
 ax_combined.plot(combined_df['ds'], combined_df['Hybrid'], label='Hybrid Forecast', linestyle='-.', color='purple')
 # Only add SARIMA to combined plot if sarima_df is defined
 if 'sarima_df' in locals():
