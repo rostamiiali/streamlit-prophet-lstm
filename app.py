@@ -294,8 +294,9 @@ model.eval()
 predictions = []
 input_seq = torch.tensor(scaled_values[-sequence_length:], dtype=torch.float32).unsqueeze(1)
 for _ in range(forecast_horizon):
-    input_seq_trans = input_seq.unsqueeze(-1)
-    pred = model(input_seq_trans.permute(1, 0, 2)).detach().item()
+    input_seq_trans = input_seq.unsqueeze(0)  # shape: (1, seq_len, 1)
+    input_seq_trans = input_seq_trans.permute(1, 0, 2)  # shape: (seq_len, 1, 1)
+    pred = model(input_seq_trans).squeeze().detach().item()
     predictions.append(pred)
     input_seq = torch.cat([input_seq[1:], torch.tensor([[pred]])])
 
