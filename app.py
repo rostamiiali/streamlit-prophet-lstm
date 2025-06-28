@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader, TensorDataset
 st.title("📈 Flu Vaccination Forecasting App")
 
 # Forecast Range
-forecast_horizon = st.slider("Select forecast horizon (months)", 6, 36, 12)
+forecast_horizon = st.slider("Select forecast horizon (months)", 6, 36, 12, key="horizon_slider")
 
 # Option to Upload or Generate Data
 upload_option = st.radio("Choose input method:", ("Upload CSV", "Use Sample Data"))
@@ -477,7 +477,7 @@ from torch.utils.data import DataLoader, TensorDataset
 st.title("📈 Flu Vaccination Forecasting App")
 
 # Forecast Range
-forecast_horizon = st.slider("Select forecast horizon (months)", 6, 36, 12)
+# Only one forecast_horizon slider should exist; the above is sufficient.
 
 # Option to Upload or Generate Data
 upload_option = st.radio("Choose input method:", ("Upload CSV", "Use Sample Data"))
@@ -755,6 +755,17 @@ lstm_forecast = np.clip(lstm_forecast, 0, None)
 
 lstm_dates = pd.date_range(start=df['ds'].iloc[train_size], periods=forecast_horizon, freq='MS')
 lstm_df = pd.DataFrame({"ds": lstm_dates, "y": lstm_forecast})
+
+# Show Transformer chart
+st.write("### Transformer Forecast vs Actual")
+fig_transformer, ax_transformer = plt.subplots()
+ax_transformer.plot(test_df.index, test_df['y'], label='Actual', color='black')
+ax_transformer.plot(lstm_df['ds'], lstm_df['y'], label='Transformer Forecast', linestyle='--', color='green')
+ax_transformer.set_title("Transformer Forecast vs Actuals")
+ax_transformer.set_xlabel("Date")
+ax_transformer.set_ylabel("Vaccinations")
+ax_transformer.legend()
+st.pyplot(fig_transformer)
 
 # Transformer RMSE and MAE (using test_df if available)
 if len(test_df) == forecast_horizon:
