@@ -3,7 +3,7 @@ pandas
 numpy
 matplotlib
 scikit-learn
-tensorflow>=2.10,<2.12
+torch
 prophet
 statsmodels
 fpdf
