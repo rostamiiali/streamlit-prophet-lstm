@@ -303,7 +303,7 @@ for _ in range(forecast_horizon):
 lstm_forecast = scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
 lstm_forecast = np.clip(lstm_forecast, 0, None)
 
-lstm_dates = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=forecast_horizon, freq='MS')
+lstm_dates = pd.date_range(start=df['ds'].iloc[-1] + pd.DateOffset(months=1), periods=forecast_horizon, freq='MS')
 lstm_df = pd.DataFrame({"ds": lstm_dates, "y": lstm_forecast})
 
 # Transformer RMSE and MAE (using test_df if available)
