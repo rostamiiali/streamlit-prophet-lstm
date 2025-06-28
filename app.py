@@ -5,11 +5,19 @@ from prophet import Prophet
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional, BatchNormalization, Input, GRU, Attention, Concatenate
-from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
-from tensorflow.keras.models import Model
+import torch
+import torch.nn as nn
+
+class LSTMForecastModel(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(LSTMForecastModel, self).__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        lstm_out, _ = self.lstm(x)
+        out = self.fc(lstm_out[:, -1, :])
+        return out
 from statsmodels.tsa.arima.model import ARIMA
 
 # App Title
