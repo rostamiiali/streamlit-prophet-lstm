@@ -171,13 +171,8 @@ ax_hybrid.legend()
 st.pyplot(fig_hybrid)
 
 
-# SARIMA Model (Optimized)
 st.write("---")
 st.subheader("🔍 SARIMA Forecasting (Optimized)")
-
-# Ensure train_df and test_df are defined as split of df
-# train_df, test_df = train_test_split(df, test_size=0.2, shuffle=False)
-# (Already defined above)
 
 # SARIMA Forecasting
 with st.spinner("Running SARIMA Forecast..."):
@@ -188,8 +183,13 @@ with st.spinner("Running SARIMA Forecast..."):
 # Cap and smooth
 sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
 
+# Ensure sarima_forecast is numeric and has no NaNs before metrics
+sarima_forecast = pd.Series(sarima_forecast, index=test_df.index)
+sarima_forecast = sarima_forecast.astype(float)
+sarima_forecast = sarima_forecast.fillna(method='ffill').fillna(method='bfill')
+
 # Compute metrics
-sarima_rmse = np.sqrt(mean_squared_error(test_df['y'], sarima_forecast))
+sarima_rmse = np.sqrt(mean_squared_error(test_df['y'].astype(float), sarima_forecast))
 sarima_mae = mean_absolute_error(test_df['y'], sarima_forecast)
 st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
 st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
