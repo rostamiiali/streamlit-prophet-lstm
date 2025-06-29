@@ -112,6 +112,22 @@ sarima_mae = mean_absolute_error(test_df['y'], sarima_forecast)
 st.write(f"### SARIMAX Forecast RMSE: {sarima_rmse:.2f}")
 st.write(f"### SARIMAX Forecast MAE: {sarima_mae:.2f}")
 
+# SARIMAX Components Visualization
+st.subheader("🧩 SARIMAX Forecast Components")
+sarimax_trend = sarima_results.level_smoothed
+sarimax_seasonal = sarima_results.seasonal_smoothed
+sarimax_resid = sarima_results.resid
+
+fig_sarimax_comp, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+axs[0].plot(sarimax_trend, label="Trend")
+axs[0].set_title("SARIMAX Trend")
+axs[1].plot(sarimax_seasonal, label="Seasonal", color='orange')
+axs[1].set_title("SARIMAX Seasonal")
+axs[2].plot(sarimax_resid, label="Residuals", color='green')
+axs[2].set_title("SARIMAX Residuals")
+plt.tight_layout()
+st.pyplot(fig_sarimax_comp)
+
 # Plot actual vs forecast with confidence band
 st.write("### SARIMAX Forecast vs Actual with 95% CI")
 fig_sarima, ax_sarima = plt.subplots()
@@ -152,6 +168,18 @@ hwes_mae = mean_absolute_error(test_df['y'], hwes_forecast)
 
 st.write(f"### HWES Forecast RMSE: {hwes_rmse:.2f}")
 st.write(f"### HWES Forecast MAE: {hwes_mae:.2f}")
+
+# HWES Components Visualization
+st.subheader("🧩 HWES Forecast Components")
+fig_hwes_comp, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+axs[0].plot(hwes_fit.level, label="Level")
+axs[0].set_title("HWES Level")
+axs[1].plot(hwes_fit.season, label="Season", color='orange')
+axs[1].set_title("HWES Season")
+axs[2].plot(hwes_fit.resid, label="Residuals", color='green')
+axs[2].set_title("HWES Residuals")
+plt.tight_layout()
+st.pyplot(fig_hwes_comp)
 
 # Plotting
 st.write("### HWES Forecast vs Actual")
@@ -258,6 +286,21 @@ transformer_mae = mean_absolute_error(true_rescaled, pred_rescaled)
 
 st.write(f"### Transformer Forecast RMSE: {transformer_rmse:.2f}")
 st.write(f"### Transformer Forecast MAE: {transformer_mae:.2f}")
+
+# Transformer Pseudo Component Visualization
+st.subheader("🧩 Transformer Forecast Components (Pseudo)")
+true_series = pd.Series(true_rescaled, index=test_df.index[:forecast_horizon])
+pred_series = pd.Series(pred_rescaled, index=test_df.index[:forecast_horizon])
+trend_est = pred_series.rolling(window=3, min_periods=1).mean()
+resid = true_series - trend_est
+
+fig_tf_comp, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+axs[0].plot(trend_est, label='Rolling Trend (Simulated)', color='purple')
+axs[0].set_title("Transformer Trend (Rolling Avg)")
+axs[1].plot(resid, label='Residual', color='green')
+axs[1].set_title("Transformer Residuals")
+plt.tight_layout()
+st.pyplot(fig_tf_comp)
 
 # Plotting
 st.write("### Transformer Forecast vs Actual")
