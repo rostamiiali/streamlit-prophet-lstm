@@ -125,5 +125,36 @@ ax_sarima.set_ylabel("Vaccinations")
 ax_sarima.legend()
 st.pyplot(fig_sarima)
 
-# Holt-Winters Model (Robust)
-# ... (rest of the code remains unchanged)
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+# Holt-Winters Forecasting (Robust)
+hw_train, hw_test = y.iloc[:-forecast_horizon], y.iloc[-forecast_horizon:]
+
+# Fit Holt-Winters model with additive trend and seasonality
+hw_model = ExponentialSmoothing(
+    hw_train,
+    trend="add",
+    seasonal="add",
+    seasonal_periods=12
+)
+hw_fit = hw_model.fit(optimized=True)
+
+# Out-of-sample forecast
+hw_fc = hw_fit.forecast(steps=forecast_horizon).clip(lower=0)
+
+# Compute accuracy metrics
+hw_rmse = np.sqrt(mean_squared_error(hw_test, hw_fc))
+hw_mae = mean_absolute_error(hw_test, hw_fc)
+st.write(f"### Holt-Winters Forecast RMSE: {hw_rmse:.2f}")
+st.write(f"### Holt-Winters Forecast MAE: {hw_mae:.2f}")
+
+# Plot Holt-Winters results
+fig_hw, ax_hw = plt.subplots()
+ax_hw.plot(hw_train.index, hw_train, label="Train", color="black")
+ax_hw.plot(hw_test.index, hw_test, label="Actual", color="blue")
+ax_hw.plot(hw_fc.index, hw_fc.values, label="Holt-Winters Forecast", linestyle="--", color="brown")
+ax_hw.set_title("Holt-Winters Forecast vs Actual")
+ax_hw.set_xlabel("Date")
+ax_hw.set_ylabel("Vaccinations")
+ax_hw.legend()
+st.pyplot(fig_hw)
