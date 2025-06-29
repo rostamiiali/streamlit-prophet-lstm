@@ -72,6 +72,9 @@ test_df['y'] = scaler.inverse_transform(test_df[['y']])
 # Evaluation
 forecast_df = forecast_df.rolling(window=2, min_periods=1).mean()
 merged = forecast_df.join(test_df, how='inner')
+merged = merged.dropna()
+merged['y'] = pd.to_numeric(merged['y'], errors='coerce')
+merged['yhat1'] = pd.to_numeric(merged['yhat1'], errors='coerce')
 neural_rmse = np.sqrt(mean_squared_error(merged['y'].astype(float).ravel(), merged['yhat1'].astype(float).ravel()))
 neural_mae = mean_absolute_error(merged['y'].astype(float).ravel(), merged['yhat1'].astype(float).ravel())
 
