@@ -252,3 +252,28 @@ ax_xgb.set_xlabel("Date")
 ax_xgb.set_ylabel("Value")
 ax_xgb.legend()
 st.pyplot(fig_xgb)
+
+# --- Final Model Comparison ---
+st.write("---")
+st.subheader("📊 Forecasting Model Comparison Summary")
+
+comparison_df = pd.DataFrame({
+    'Model': ['Prophet', 'SARIMAX', 'HWES', 'XGBoost'],
+    'RMSE': [prophet_rmse, sarima_rmse, hwes_rmse, xgb_rmse],
+    'MAE': [prophet_mae, sarima_mae, hwes_mae, xgb_mae]
+}).sort_values('RMSE')
+
+st.dataframe(comparison_df.style.format({'RMSE': '{:.2f}', 'MAE': '{:.2f}'}))
+
+best_model = comparison_df.iloc[0]['Model']
+st.write(f"✅ Based on RMSE, the **best performing model** is: **{best_model}**")
+
+st.markdown("""
+#### 📌 Interpretation:
+- **Prophet** is good for capturing trend and seasonality when data has strong yearly cycles.
+- **SARIMAX** performed well by modeling both autoregressive and seasonal patterns with statistical rigor.
+- **HWES** is simple yet effective for seasonal data but may lag in responsiveness.
+- **XGBoost**, while more complex and slower, captured non-linear patterns and interactions using engineered features.
+
+The model with the lowest RMSE provides the most accurate forecasts for this dataset. Consider using this model for production scenarios, but evaluate each model periodically with updated data.
+""")
