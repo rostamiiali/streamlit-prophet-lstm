@@ -80,24 +80,47 @@ ci_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].set_index('ds')
 st.line_chart(ci_df)
 
 st.write("---")
-st.subheader("🔍 SARIMA Forecasting (Optimized)")
-sarima_train = train_df['y']
+st.subheader("🔍 SARIMAX Forecasting (Optimized)")
+
+# Train SARIMAX on the training set
+sarima_endog = train_df['y']
 sarima_model = SARIMAX(
-    sarima_train,
+    sarima_endog,
     order=(1, 1, 1),
     seasonal_order=(1, 1, 1, 12),
     enforce_stationarity=False,
     enforce_invertibility=False
-).fit(disp=False)
-sarima_forecast = sarima_model.forecast(steps=forecast_horizon)
-sarima_forecast = pd.Series(sarima_forecast.values, index=test_df.index).clip(lower=0).rolling(window=2, min_periods=1).ffill().bfill()
+)
+sarima_results = sarima_model.fit(disp=False)
+
+# Forecast with confidence intervals
+forecast_res = sarima_results.get_forecast(steps=forecast_horizon)
+forecast_mean = forecast_res.predicted_mean
+conf_int = forecast_res.conf_int(alpha=0.05)
+lower_series = conf_int.iloc[:, 0]
+upper_series = conf_int.iloc[:, 1]
+
+# Align to test index and cap negatives
+sarima_forecast = pd.Series(forecast_mean.values, index=test_df.index).clip(lower=0)
+sarima_lower = pd.Series(lower_series.values, index=test_df.index).clip(lower=0)
+sarima_upper = pd.Series(upper_series.values, index=test_df.index).clip(lower=0)
+
+# Compute metrics
 sarima_rmse = np.sqrt(mean_squared_error(test_df['y'], sarima_forecast))
 sarima_mae = mean_absolute_error(test_df['y'], sarima_forecast)
-st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
-st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+st.write(f"### SARIMAX Forecast RMSE: {sarima_rmse:.2f}")
+st.write(f"### SARIMAX Forecast MAE: {sarima_mae:.2f}")
+
+# Plot actual vs forecast with confidence band
+st.write("### SARIMAX Forecast vs Actual with 95% CI")
 fig_sarima, ax_sarima = plt.subplots()
 ax_sarima.plot(test_df.index, test_df['y'], label='Actual', color='black')
-ax_sarima.plot(test_df.index, sarima_forecast, label='SARIMA Forecast', linestyle='--', color='orange')
+ax_sarima.plot(test_df.index, sarima_forecast, label='Forecast', linestyle='--', color='orange')
+ax_sarima.fill_between(test_df.index, sarima_lower, sarima_upper, color='orange', alpha=0.3)
+ax_sarima.set_title("SARIMAX Forecast vs Actual")
+ax_sarima.set_xlabel("Date")
+ax_sarima.set_ylabel("Vaccinations")
+ax_sarima.legend()
 st.pyplot(fig_sarima)
 
 st.write("---")
