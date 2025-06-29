@@ -69,6 +69,16 @@ st.write(f"### Prophet Forecast MAE: {mae:.2f}")
 fig1 = prophet.plot(forecast)
 st.pyplot(fig1)
 
+# Show Prophet forecast components (trend, yearly seasonality, monthly seasonality)
+st.subheader("📊 Prophet Forecast Components")
+fig_comp = prophet.plot_components(forecast)
+st.pyplot(fig_comp)
+
+# Display prediction intervals for the next periods
+st.subheader("🔮 Prophet Forecast with Confidence Intervals")
+ci_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].set_index('ds')
+st.line_chart(ci_df)
+
 st.write("---")
 st.subheader("🔍 SARIMA Forecasting (Optimized)")
 sarima_train = train_df['y']
