@@ -201,7 +201,7 @@ train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 class LSTMForecast(nn.Module):
     def __init__(self, input_size=1, hidden_size=50, num_layers=2):
         super().__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.2)
         self.fc = nn.Linear(hidden_size, 1)
     def forward(self, x):
         out, _ = self.lstm(x)
@@ -209,17 +209,20 @@ class LSTMForecast(nn.Module):
 
 model = LSTMForecast()
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.0005)
 
 # Train model
 model.train()
-for epoch in range(30):
+for epoch in range(100):
     for xb, yb in train_loader:
         optimizer.zero_grad()
         pred = model(xb)
         loss = criterion(pred, yb.unsqueeze(-1))
         loss.backward()
         optimizer.step()
+    # Optionally, print loss every 10 epochs
+    if epoch % 10 == 0:
+        st.write(f"Epoch {epoch}: loss={loss.item():.4f}")
 
 # Forecast future points
 model.eval()
