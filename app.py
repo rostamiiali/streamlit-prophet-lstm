@@ -228,8 +228,11 @@ input_seq = torch.tensor(train_seq[-seq_len:], dtype=torch.float32).unsqueeze(0)
 for _ in range(forecast_horizon):
     with torch.no_grad():
         out = model(input_seq)
+    # Collect prediction
     preds.append(out.item())
-    input_seq = torch.cat([input_seq[:, 1:, :], out.unsqueeze(0).unsqueeze(-1)], dim=1)
+    # Append new prediction to the end of the sequence (maintain shape [1, seq_len, 1])
+    # out: (batch_size, 1) -> unsqueeze at dim=1 => (batch_size, 1, 1)
+    input_seq = torch.cat([input_seq[:, 1:, :], out.unsqueeze(1)], dim=1)
 
 # Inverse scale predictions
 lstm_pred = scaler.inverse_transform(np.array(preds).reshape(-1, 1)).flatten()
