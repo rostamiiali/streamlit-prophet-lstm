@@ -190,123 +190,52 @@ ax_hwes.set_ylabel("Value")
 ax_hwes.legend()
 st.pyplot(fig_hwes)
 
-# --- Improved Transformer-based Forecasting ---
-from torch.nn import TransformerEncoder, TransformerEncoderLayer
+# --- XGBoost Forecasting ---
+import xgboost as xgb
 
 st.write("---")
-st.subheader("🚀 Transformer Forecasting (Optimized Architecture with Positional Encoding)")
+st.subheader("📈 XGBoost Forecasting (Lag-Based Supervised Learning)")
 
-# Fit scaler only on training data to avoid leakage
-scaler = MinMaxScaler()
-scaled_train = scaler.fit_transform(train_df[['y']].values).flatten()
-scaled_full = scaler.transform(df[['y']].values).flatten()
+def create_lagged_features(df, lags=12):
+    df_lagged = df.copy()
+    for lag in range(1, lags + 1):
+        df_lagged[f"lag_{lag}"] = df_lagged['y'].shift(lag)
+    df_lagged['month'] = df_lagged['ds'].dt.month
+    df_lagged = df_lagged.dropna().reset_index(drop=True)
+    return df_lagged
 
-def create_sequences(data, input_len, output_len):
-    xs, ys = [], []
-    for i in range(len(data) - input_len - output_len):
-        x = data[i:(i+input_len)]
-        y = data[(i+input_len):(i+input_len+output_len)]
-        xs.append(x)
-        ys.append(y)
-    return np.array(xs), np.array(ys)
+df_lagged = create_lagged_features(df, lags=12)
 
-input_len = 12
-output_len = forecast_horizon
-X_seq, y_seq = create_sequences(scaled_train, input_len, output_len)
+# Train/test split
+xgb_train = df_lagged[df_lagged['ds'] < test_df.index[0]]
+xgb_test = df_lagged[df_lagged['ds'] >= test_df.index[0]]
 
-X_seq_tensor = torch.tensor(X_seq, dtype=torch.float32).unsqueeze(-1)
-y_seq_tensor = torch.tensor(y_seq, dtype=torch.float32).unsqueeze(-1)
-
-# Final sequence for testing
-test_input = torch.tensor(scaled_full[-(input_len + output_len):-output_len], dtype=torch.float32).unsqueeze(0).unsqueeze(-1)
-
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_len=500):
-        super().__init__()
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
-
-    def forward(self, x):
-        x = x + self.pe[:, :x.size(1), :]
-        return x
-
-class TransformerTimeSeries(nn.Module):
-    def __init__(self, input_dim=1, d_model=32, nhead=2, num_layers=2, dim_feedforward=64):
-        super().__init__()
-        self.input_dim = input_dim
-        self.d_model = d_model
-        self.embedding = nn.Linear(input_dim, d_model)
-        self.pos_encoder = PositionalEncoding(d_model)
-        encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward)
-        self.transformer = TransformerEncoder(encoder_layers, num_layers)
-        self.fc_out = nn.Linear(d_model, output_len)
-
-    def forward(self, x):
-        x = self.embedding(x)
-        x = self.pos_encoder(x)
-        x = self.transformer(x)
-        x = x.mean(dim=1)
-        return self.fc_out(x)
-
-model = TransformerTimeSeries()
-loss_fn = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+features = [col for col in xgb_train.columns if col not in ['ds', 'y']]
+X_train, y_train = xgb_train[features], xgb_train['y']
+X_test, y_test = xgb_test[features], xgb_test['y']
 
 # Train model
-epochs = 80
-for epoch in range(epochs):
-    model.train()
-    optimizer.zero_grad()
-    out = model(X_seq_tensor)
-    loss = loss_fn(out, y_seq_tensor.squeeze())
-    loss.backward()
-    optimizer.step()
-    if epoch % 10 == 0:
-        st.text(f"Transformer Epoch {epoch}: loss={loss.item():.4f}")
+xgb_model = xgb.XGBRegressor(n_estimators=300, learning_rate=0.1, max_depth=3)
+xgb_model.fit(X_train, y_train)
 
-# Predict
-model.eval()
-with torch.no_grad():
-    pred = model(test_input).squeeze().numpy()
-
-# Rescale prediction
-pred_rescaled = scaler.inverse_transform(pred.reshape(-1, 1)).flatten()
-true_rescaled = test_df['y'].values[:forecast_horizon]
+# Forecast
+xgb_pred = xgb_model.predict(X_test)
+xgb_pred = pd.Series(xgb_pred, index=xgb_test['ds'])
 
 # Evaluation
-transformer_rmse = np.sqrt(mean_squared_error(true_rescaled, pred_rescaled))
-transformer_mae = mean_absolute_error(true_rescaled, pred_rescaled)
+xgb_rmse = np.sqrt(mean_squared_error(y_test, xgb_pred))
+xgb_mae = mean_absolute_error(y_test, xgb_pred)
 
-st.write(f"### Transformer Forecast RMSE: {transformer_rmse:.2f}")
-st.write(f"### Transformer Forecast MAE: {transformer_mae:.2f}")
+st.write(f"### XGBoost Forecast RMSE: {xgb_rmse:.2f}")
+st.write(f"### XGBoost Forecast MAE: {xgb_mae:.2f}")
 
-# Transformer Pseudo Component Visualization
-st.subheader("🧩 Transformer Forecast Components (Pseudo)")
-true_series = pd.Series(true_rescaled, index=test_df.index[:forecast_horizon])
-pred_series = pd.Series(pred_rescaled, index=test_df.index[:forecast_horizon])
-trend_est = pred_series.rolling(window=3, min_periods=1).mean()
-resid = true_series - trend_est
-
-fig_tf_comp, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-axs[0].plot(trend_est, label='Rolling Trend (Simulated)', color='purple')
-axs[0].set_title("Transformer Trend (Rolling Avg)")
-axs[1].plot(resid, label='Residual', color='green')
-axs[1].set_title("Transformer Residuals")
-plt.tight_layout()
-st.pyplot(fig_tf_comp)
-
-# Plotting
-st.write("### Transformer Forecast vs Actual")
-fig_tf, ax_tf = plt.subplots()
-ax_tf.plot(test_df.index[:forecast_horizon], true_rescaled, label='Actual', color='black')
-ax_tf.plot(test_df.index[:forecast_horizon], pred_rescaled, label='Transformer Forecast', linestyle='--', color='purple')
-ax_tf.set_title("Transformer Forecast vs Actual")
-ax_tf.set_xlabel("Date")
-ax_tf.set_ylabel("Value")
-ax_tf.legend()
-st.pyplot(fig_tf)
+# XGBoost Plotting
+st.write("### XGBoost Forecast vs Actual")
+fig_xgb, ax_xgb = plt.subplots()
+ax_xgb.plot(y_test.index, y_test.values, label='Actual', color='black')
+ax_xgb.plot(y_test.index, xgb_pred.values, label='XGBoost Forecast', linestyle='--', color='teal')
+ax_xgb.set_title("XGBoost Forecast vs Actual")
+ax_xgb.set_xlabel("Date")
+ax_xgb.set_ylabel("Value")
+ax_xgb.legend()
+st.pyplot(fig_xgb)
