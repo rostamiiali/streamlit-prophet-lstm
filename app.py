@@ -208,9 +208,11 @@ def create_lagged_features(df, lags=12):
 
 df_lagged = create_lagged_features(df, lags=12)
 
+
 # Train/test split
-xgb_train = df_lagged[df_lagged['ds'] < test_df.index[0]]
-xgb_test = df_lagged[df_lagged['ds'] >= test_df.index[0]]
+split_date = test_df['ds'].iloc[0]
+xgb_train = df_lagged[df_lagged['ds'] < split_date]
+xgb_test = df_lagged[df_lagged['ds'] >= split_date]
 
 features = [col for col in xgb_train.columns if col not in ['ds', 'y']]
 X_train, y_train = xgb_train[features], xgb_train['y']
