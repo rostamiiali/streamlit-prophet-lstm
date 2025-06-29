@@ -17,22 +17,24 @@ def run_sarima_forecast(df):
     df['ds'] = pd.to_datetime(df['ds'])
     df['y'] = pd.to_numeric(df['y'], errors='coerce')
     df = df.dropna()
-
     train_size = int(len(df) * 0.8)
     train = df.iloc[:train_size]
     test = df.iloc[train_size:]
-
-    sarimax_model = SARIMAX(train['y'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+    sarimax_model = SARIMAX(
+        train['y'],
+        order=(1, 1, 1),
+        seasonal_order=(1, 1, 1, 12),
+        enforce_stationarity=False,
+        enforce_invertibility=False
+    )
     sarimax_fit = sarimax_model.fit(disp=False)
-
     forecast = sarimax_fit.forecast(steps=len(test))
     forecast = pd.DataFrame({'ds': test['ds'], 'yhat': forecast})
-
     return forecast
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 import warnings
-from arch.univariate import ARX
+
 
 import torch
 import torch.nn as nn
@@ -631,47 +633,7 @@ ax_hybrid.legend()
 st.pyplot(fig_hybrid)
 
 # SARIMA Model (Optimized)
-st.write("---")
-st.subheader("🔍 SARIMA Forecasting (Optimized)")
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-import warnings
-warnings.filterwarnings("ignore")
-
-# Use expert parameters without grid search
-sarima_train = train_df['y']
-sarima_model = SARIMAX(
-    sarima_train,
-    order=(1, 1, 1),
-    seasonal_order=(1, 1, 1, 12),
-    enforce_stationarity=False,
-    enforce_invertibility=False
-)
-sarima_fit = sarima_model.fit(disp=False)
-
-# Forecast into the test period
-sarima_forecast = sarima_fit.forecast(steps=forecast_horizon)
-# Align forecast series to test index
-sarima_forecast = pd.Series(sarima_forecast.values, index=test_df.index)
-# Cap and smooth
-sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
-
-# Compute metrics
-sarima_rmse = np.sqrt(mean_squared_error(test_df['y'], sarima_forecast))
-sarima_mae = mean_absolute_error(test_df['y'], sarima_forecast)
-st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
-st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
-st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{sarima_mae:.0f} units/month. Lower values = better accuracy.")
-
-# Plot SARIMA forecast
-st.write("### SARIMA Forecast vs Actual")
-fig_sarima, ax_sarima = plt.subplots()
-ax_sarima.plot(test_df.index, test_df['y'], label='Actual', color='black')
-ax_sarima.plot(test_df.index, sarima_forecast, label='SARIMA Forecast', linestyle='--', color='orange')
-ax_sarima.set_title("SARIMA Forecast vs Actual")
-ax_sarima.set_xlabel("Date")
-ax_sarima.set_ylabel("Vaccinations")
-ax_sarima.legend()
-st.pyplot(fig_sarima)
+# (Removed top-level SARIMAX usage for undefined variables)
 
 # Holt-Winters Model (Robust)
 st.write("---")
@@ -960,3 +922,16 @@ Use these to choose the most reliable model or share with stakeholders."""
     pdf_output.write(pdf_bytes)
 
     st.download_button("⬇️ Download Report", data=pdf_output.getvalue(), file_name="forecast_report.pdf", mime="application/pdf")
+# --- SARIMA forecast trigger block for UI selection (add at end of file) ---
+
+# Example: Run SARIMA forecast if selected by user
+if "selected_model" in globals():
+    if selected_model == "SARIMA":
+        if uploaded_file is not None:
+            df = pd.read_csv(uploaded_file)
+            df.columns = ['ds', 'y']
+            df['ds'] = pd.to_datetime(df['ds'])
+            df = df.set_index('ds')
+            run_sarima_forecast(df)
+        else:
+            st.warning("Please upload a CSV file for SARIMA forecasting.")
