@@ -673,18 +673,20 @@ sarima_forecast_clean = pd.to_numeric(sarima_forecast_series, errors='coerce')
 combined = pd.concat([test_y_clean, sarima_forecast_clean], axis=1).dropna()
 y_true = combined.iloc[:, 0]
 y_pred = combined.iloc[:, 1]
+sarima_rmse = None
 try:
     y_true = np.array(y_true, dtype=np.float64)
     y_pred = np.array(y_pred, dtype=np.float64)
-    if len(y_true) == len(y_pred) and len(y_true) > 0:
+    if len(y_true) > 0 and len(y_pred) > 0:
         sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-        sarima_mae = mean_absolute_error(y_true, y_pred)
-        st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
-        st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
     else:
-        st.error("SARIMA evaluation skipped: Forecast and actual values are not aligned or empty.")
+        raise ValueError("SARIMA evaluation failed: test or forecasted data is empty.")
 except Exception as e:
     st.error(f"SARIMA evaluation failed: {e}")
+
+# Display RMSE only if successfully calculated
+if sarima_rmse is not None:
+    st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
 
 # Plot SARIMA forecast
 st.write("### SARIMA Forecast vs Actual")
