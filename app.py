@@ -194,9 +194,21 @@ combined = pd.concat([test_y_clean, sarima_forecast_clean], axis=1).dropna()
 y_true = combined.iloc[:, 0]
 y_pred = combined.iloc[:, 1]
 
-# Now compute metrics
-sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-sarima_mae = mean_absolute_error(y_true, y_pred)
+try:
+    y_true = np.array(y_true, dtype=np.float64)
+    y_pred = np.array(y_pred, dtype=np.float64)
+
+    if len(y_true) != len(y_pred):
+        raise ValueError("Mismatched lengths: y_true has {}, y_pred has {}".format(len(y_true), len(y_pred)))
+
+    if np.isnan(y_true).any() or np.isnan(y_pred).any():
+        raise ValueError("Found NaNs in y_true or y_pred")
+
+    sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    sarima_mae = mean_absolute_error(y_true, y_pred)
+except Exception as e:
+    st.error(f"SARIMA evaluation failed: {e}")
+    sarima_rmse, sarima_mae = None, None
 st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
 st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
 st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{sarima_mae:.0f} units/month. Lower values = better accuracy.")
