@@ -175,13 +175,16 @@ st.pyplot(fig_hybrid)
 st.write("---")
 st.subheader("🔍 SARIMA Forecasting (Optimized)")
 
-# Use SARIMA forecast function after data is uploaded and df is prepared
-sarima_forecast_df = run_sarima_forecast(df)
-sarima_forecast_df = sarima_forecast_df.set_index('ds')
+# Ensure train_df and test_df are defined as split of df
+# train_df, test_df = train_test_split(df, test_size=0.2, shuffle=False)
+# (Already defined above)
 
-# Align forecast to test_df
-sarima_forecast = sarima_forecast_df['yhat'][-forecast_horizon:]
-sarima_forecast = pd.Series(sarima_forecast.values, index=test_df.index)
+# SARIMA Forecasting
+with st.spinner("Running SARIMA Forecast..."):
+    sarima_model = SARIMAX(train_df['y'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+    sarima_results = sarima_model.fit(disp=False)
+    sarima_forecast_values = sarima_results.forecast(steps=len(test_df))
+    sarima_forecast = pd.Series(sarima_forecast_values, index=test_df.index)
 # Cap and smooth
 sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
 
