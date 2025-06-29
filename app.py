@@ -77,3 +77,53 @@ ax.legend()
 ax.set_xlabel("Date")
 ax.set_ylabel("Value")
 st.pyplot(fig)
+
+st.write("---")
+st.subheader("🔍 SARIMA Forecasting (Optimized)")
+
+import statsmodels.api as sm
+
+# Prepare the series at a fixed monthly frequency
+df_sarima = df.copy()
+df_sarima['ds'] = pd.to_datetime(df_sarima['ds'])
+df_sarima = df_sarima.set_index('ds').asfreq('MS')
+y = df_sarima['y'].astype(float)
+
+# Split into train/test
+train_sarima, test_sarima = y.iloc[:-forecast_horizon], y.iloc[-forecast_horizon:]
+
+# Fit SARIMAX with seasonal period 12
+sarima_model = sm.tsa.statespace.SARIMAX(
+    train_sarima,
+    order=(1, 1, 1),
+    seasonal_order=(1, 1, 1, 12),
+    enforce_stationarity=False,
+    enforce_invertibility=False
+)
+sarima_res = sarima_model.fit(disp=False)
+
+# Forecast out of sample
+sarima_pred = sarima_res.get_forecast(steps=forecast_horizon)
+sarima_fc = sarima_pred.predicted_mean.clip(lower=0)
+sarima_ci = sarima_pred.conf_int(alpha=0.05)
+
+# Compute metrics
+sarima_rmse = np.sqrt(mean_squared_error(test_sarima, sarima_fc))
+sarima_mae = mean_absolute_error(test_sarima, sarima_fc)
+st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+
+# Plot SARIMA results
+fig_sarima, ax_sarima = plt.subplots()
+ax_sarima.plot(train_sarima.index, train_sarima, label='Train', color='black')
+ax_sarima.plot(test_sarima.index, test_sarima, label='Actual', color='blue')
+ax_sarima.plot(sarima_fc.index, sarima_fc.values, label='SARIMA Forecast', linestyle='--', color='orange')
+ax_sarima.fill_between(sarima_ci.index, sarima_ci.iloc[:,0], sarima_ci.iloc[:,1], color='orange', alpha=0.2)
+ax_sarima.set_title("SARIMA Forecast vs Actual")
+ax_sarima.set_xlabel("Date")
+ax_sarima.set_ylabel("Vaccinations")
+ax_sarima.legend()
+st.pyplot(fig_sarima)
+
+# Holt-Winters Model (Robust)
+# ... (rest of the code remains unchanged)
