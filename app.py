@@ -183,15 +183,20 @@ with st.spinner("Running SARIMA Forecast..."):
 # Cap and smooth
 sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
 
-# Ensure sarima_forecast is numeric and has no NaNs before metrics
-sarima_forecast = pd.Series(sarima_forecast, index=test_df.index)
-sarima_forecast = sarima_forecast.astype(float)
-sarima_forecast = sarima_forecast.fillna(method='ffill').fillna(method='bfill')
+## SARIMA metrics calculation - robust alignment and numeric
+# Ensure both Series are numeric and aligned
+test_y_clean = pd.to_numeric(test_df['y'], errors='coerce')
+sarima_forecast_series = pd.Series(sarima_forecast.values, index=test_df.index)
+sarima_forecast_clean = pd.to_numeric(sarima_forecast_series, errors='coerce')
 
-sarima_forecast_clean = pd.to_numeric(sarima_forecast, errors='coerce').fillna(method='ffill').fillna(method='bfill')
-test_y_clean = pd.to_numeric(test_df['y'], errors='coerce').fillna(method='ffill').fillna(method='bfill')
-sarima_rmse = np.sqrt(mean_squared_error(test_y_clean, sarima_forecast_clean))
-sarima_mae = mean_absolute_error(test_y_clean, sarima_forecast_clean)
+# Combine and drop NaNs to ensure equal length
+combined = pd.concat([test_y_clean, sarima_forecast_clean], axis=1).dropna()
+y_true = combined.iloc[:, 0]
+y_pred = combined.iloc[:, 1]
+
+# Now compute metrics
+sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+sarima_mae = mean_absolute_error(y_true, y_pred)
 st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
 st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
 st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{sarima_mae:.0f} units/month. Lower values = better accuracy.")
