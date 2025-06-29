@@ -697,14 +697,16 @@ if not combined.empty:
 else:
     sarima_rmse = sarima_mae = np.nan
 
-try:
+# Display SARIMA metrics if available
+if sarima_rmse is not None and not np.isnan(sarima_rmse):
     st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
-except NameError:
-    st.warning("SARIMA RMSE not calculated due to missing forecast or test data.")
-try:
+else:
+    st.warning("SARIMA RMSE not calculated: forecast or test data is empty.")
+
+if sarima_mae is not None and not np.isnan(sarima_mae):
     st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
-except NameError:
-    st.warning("SARIMA MAE not calculated due to missing forecast or test data.")
+else:
+    st.warning("SARIMA MAE not calculated: forecast or test data is empty.")
 
 # Plot
 fig_sarima, ax = plt.subplots()
