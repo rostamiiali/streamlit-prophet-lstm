@@ -214,7 +214,10 @@ if len(y_true) > 0 and len(y_pred) > 0:
     st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
 else:
     st.warning("SARIMA evaluation skipped: forecast or test data is empty.")
-st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+if 'sarima_mae' in locals():
+    st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+else:
+    st.warning("SARIMA MAE evaluation skipped: forecast or test data is empty.")
 st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{sarima_mae:.0f} units/month. Lower values = better accuracy.")
 
 # Plot SARIMA forecast
