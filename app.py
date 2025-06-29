@@ -2,7 +2,7 @@ from sklearn.preprocessing import MinMaxScaler
 import streamlit as st
 import pandas as pd
 import numpy as np
-from neuralprophet import NeuralProphet
+from prophet import Prophet
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
@@ -45,55 +45,42 @@ train_size = len(df) - forecast_horizon
 train_df = df.iloc[:train_size].copy()
 test_df = df.iloc[train_size:].copy()
 
-st.subheader("🔮 NeuralProphet Forecasting (Enhanced)")
+st.subheader("🔮 Prophet Forecasting")
 
-neural_prophet = NeuralProphet(
+prophet = Prophet(
     yearly_seasonality=True,
     weekly_seasonality=False,
     daily_seasonality=False,
-    seasonality_mode="additive",
-    learning_rate=0.01,
-    epochs=200
+    seasonality_mode="additive"
 )
+prophet.fit(train_df)
 
-# neural_prophet.add_seasonality(name="monthly", period=30.5, fourier_order=10)
-
-scaler = MinMaxScaler()
-train_df['y'] = scaler.fit_transform(train_df[['y']])
-
-metrics = neural_prophet.fit(train_df, freq="MS")
-future = neural_prophet.make_future_dataframe(train_df, periods=forecast_horizon, n_historic_predictions=True)
-forecast = neural_prophet.predict(future)
-
-forecast['yhat1'] = scaler.inverse_transform(forecast[['yhat1']])
-forecast_df = forecast[['ds', 'yhat1']].set_index('ds')
-test_df['y'] = scaler.inverse_transform(test_df[['y']])
+future = prophet.make_future_dataframe(periods=forecast_horizon, freq="MS")
+forecast = prophet.predict(future)
 
 # Evaluation
-forecast_df = forecast_df.rolling(window=2, min_periods=1).mean()
-# Drop NaNs and ensure numeric types before calculating errors
-merged = forecast_df.join(test_df, how='inner')
-merged = merged.dropna(subset=['y', 'yhat1'])
+forecast_df = forecast[['ds', 'yhat']].set_index('ds')
+merged = forecast_df.join(test_df.set_index('ds'), how='inner')
+merged.dropna(subset=['y', 'yhat'], inplace=True)
 merged['y'] = pd.to_numeric(merged['y'], errors='coerce')
-merged['yhat1'] = pd.to_numeric(merged['yhat1'], errors='coerce')
-merged = merged.dropna(subset=['y', 'yhat1'])
+merged['yhat'] = pd.to_numeric(merged['yhat'], errors='coerce')
+merged.dropna(subset=['y', 'yhat'], inplace=True)
 
-neural_rmse = np.sqrt(mean_squared_error(merged['y'].values, merged['yhat1'].values))
-neural_mae = mean_absolute_error(merged['y'].values, merged['yhat1'].values)
+prophet_rmse = np.sqrt(mean_squared_error(merged['y'].values, merged['yhat'].values))
+prophet_mae = mean_absolute_error(merged['y'].values, merged['yhat'].values)
 
-st.write(f"### NeuralProphet Forecast RMSE: {neural_rmse:.2f}")
-st.write(f"### NeuralProphet Forecast MAE: {neural_mae:.2f}")
+st.write(f"### Prophet Forecast RMSE: {prophet_rmse:.2f}")
+st.write(f"### Prophet Forecast MAE: {prophet_mae:.2f}")
 
-# Plotting
-st.subheader("📈 NeuralProphet Forecast vs Actual")
-fig_np, ax_np = plt.subplots()
-ax_np.plot(merged.index, merged['y'], label='Actual', color='black')
-ax_np.plot(merged.index, merged['yhat1'], label='NeuralProphet Forecast', linestyle='--', color='purple')
-ax_np.set_title("NeuralProphet Forecast vs Actual")
-ax_np.set_xlabel("Date")
-ax_np.set_ylabel("Value")
-ax_np.legend()
-st.pyplot(fig_np)
+st.subheader("📈 Prophet Forecast vs Actual")
+fig_prophet, ax_prophet = plt.subplots()
+ax_prophet.plot(merged.index, merged['y'], label='Actual', color='black')
+ax_prophet.plot(merged.index, merged['yhat'], label='Prophet Forecast', linestyle='--', color='blue')
+ax_prophet.set_title("Prophet Forecast vs Actual")
+ax_prophet.set_xlabel("Date")
+ax_prophet.set_ylabel("Value")
+ax_prophet.legend()
+st.pyplot(fig_prophet)
 
 st.write("---")
 st.subheader("🔍 SARIMAX Forecasting (Optimized)")
