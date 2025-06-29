@@ -162,3 +162,89 @@ ax_hwes.set_xlabel("Date")
 ax_hwes.set_ylabel("Value")
 ax_hwes.legend()
 st.pyplot(fig_hwes)
+
+# --- Transformer-based Forecasting Model (Best Practice) ---
+st.write("---")
+st.subheader("🧠 Transformer Forecasting (PyTorch)")
+
+import torch.nn.functional as F
+
+# Define Transformer model
+class TimeSeriesTransformer(nn.Module):
+    def __init__(self, input_size=1, d_model=64, nhead=4, num_layers=2, dropout=0.1):
+        super(TimeSeriesTransformer, self).__init__()
+        self.model_type = 'Transformer'
+        self.input_embedding = nn.Linear(input_size, d_model)
+        self.pos_encoder = nn.Parameter(torch.zeros(1, 1000, d_model))
+        encoder_layers = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=num_layers)
+        self.decoder = nn.Linear(d_model, 1)
+
+    def forward(self, src):
+        src = self.input_embedding(src)
+        src += self.pos_encoder[:, :src.size(1), :]
+        output = self.transformer_encoder(src)
+        output = self.decoder(output)
+        return output
+
+# Preprocessing for transformer
+def create_transformer_dataset(series, input_window, output_window):
+    X, y = [], []
+    for i in range(len(series) - input_window - output_window):
+        X.append(series[i:i+input_window])
+        y.append(series[i+input_window:i+input_window+output_window])
+    return np.array(X), np.array(y)
+
+input_window = 12
+output_window = forecast_horizon
+series = df['y'].values.astype(np.float32)
+X, y = create_transformer_dataset(series, input_window, output_window)
+X_tensor = torch.tensor(X).unsqueeze(-1)
+y_tensor = torch.tensor(y).unsqueeze(-1)
+
+# Train/test split
+X_train = X_tensor[:-1]
+y_train = y_tensor[:-1]
+X_test = X_tensor[-1:]
+y_test = y_tensor[-1:]
+
+# Model, loss, optimizer
+model = TimeSeriesTransformer()
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Training
+epochs = 100
+for epoch in range(epochs):
+    model.train()
+    optimizer.zero_grad()
+    output = model(X_train)
+    loss = criterion(output, y_train)
+    loss.backward()
+    optimizer.step()
+    if epoch % 10 == 0:
+        st.text(f"Transformer Epoch {epoch}: loss={loss.item():.4f}")
+
+# Forecast
+model.eval()
+with torch.no_grad():
+    prediction = model(X_test).squeeze().numpy()
+
+# Align forecast
+transformer_forecast = pd.Series(prediction.flatten(), index=test_df.index).clip(lower=0)
+transformer_rmse = np.sqrt(mean_squared_error(test_df['y'], transformer_forecast))
+transformer_mae = mean_absolute_error(test_df['y'], transformer_forecast)
+
+st.write(f"### Transformer Forecast RMSE: {transformer_rmse:.2f}")
+st.write(f"### Transformer Forecast MAE: {transformer_mae:.2f}")
+
+# Plot
+st.write("### Transformer Forecast vs Actual")
+fig_transformer, ax_transformer = plt.subplots()
+ax_transformer.plot(test_df.index, test_df['y'], label='Actual', color='black')
+ax_transformer.plot(test_df.index, transformer_forecast, label='Transformer Forecast', linestyle='--', color='green')
+ax_transformer.set_title("Transformer Forecast vs Actual")
+ax_transformer.set_xlabel("Date")
+ax_transformer.set_ylabel("Value")
+ax_transformer.legend()
+st.pyplot(fig_transformer)
