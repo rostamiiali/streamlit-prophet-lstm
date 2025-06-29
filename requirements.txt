@@ -1,15 +1,4 @@
-streamlit
-pandas
-numpy
-matplotlib
-scikit-learn
-torch
-prophet
-statsmodels
-fpdf
-pmdarima
-# Trigger redeploy
-# Trigger redeploy
-# update
-# refresh
+# updated on 2025-06-29 to remove pmdarima streamlit pandas numpy 
+matplotlib scikit-learn torch prophet statsmodels fpdf pmdarima # Trigger 
+redeploy # Trigger redeploy # update # refresh
 
