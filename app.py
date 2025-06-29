@@ -198,11 +198,15 @@ import xgboost as xgb
 st.write("---")
 st.subheader("📈 XGBoost Forecasting (Lag-Based Supervised Learning)")
 
+@st.cache_data
 def create_lagged_features(df, lags=12):
     df_lagged = df.copy()
     for lag in range(1, lags + 1):
         df_lagged[f"lag_{lag}"] = df_lagged['y'].shift(lag)
     df_lagged['month'] = df_lagged['ds'].dt.month
+    # Add rolling features
+    df_lagged['rolling_mean_3'] = df_lagged['y'].rolling(window=3).mean()
+    df_lagged['rolling_std_3'] = df_lagged['y'].rolling(window=3).std()
     df_lagged = df_lagged.dropna().reset_index(drop=True)
     return df_lagged
 
@@ -218,9 +222,14 @@ features = [col for col in xgb_train.columns if col not in ['ds', 'y']]
 X_train, y_train = xgb_train[features], xgb_train['y']
 X_test, y_test = xgb_test[features], xgb_test['y']
 
-# Train model
-xgb_model = xgb.XGBRegressor(n_estimators=300, learning_rate=0.1, max_depth=3)
-xgb_model.fit(X_train, y_train)
+ # Train model
+xgb_model = xgb.XGBRegressor(n_estimators=150, learning_rate=0.1, max_depth=3)
+xgb_model.fit(
+    X_train, y_train,
+    eval_set=[(X_test, y_test)],
+    early_stopping_rounds=10,
+    verbose=False
+)
 
 # Forecast
 xgb_pred = xgb_model.predict(X_test)
