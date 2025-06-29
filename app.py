@@ -163,17 +163,16 @@ ax_hwes.set_ylabel("Value")
 ax_hwes.legend()
 st.pyplot(fig_hwes)
 
-# --- Transformer-based Forecasting Model (Best Practice) ---
-# Updated Transformer Forecasting (Improved Version)
-from torch.nn import Transformer
-from sklearn.preprocessing import MinMaxScaler
+# --- Improved Transformer-based Forecasting ---
+from torch.nn import TransformerEncoder, TransformerEncoderLayer
 
 st.write("---")
-st.subheader("🚀 Transformer Forecasting (Improved PyTorch Version)")
+st.subheader("🚀 Transformer Forecasting (Optimized Architecture with Positional Encoding)")
 
-# Normalize the series
+# Fit scaler only on training data to avoid leakage
 scaler = MinMaxScaler()
-scaled_series = scaler.fit_transform(df[['y']].values).flatten()
+scaled_train = scaler.fit_transform(train_df[['y']].values).flatten()
+scaled_full = scaler.transform(df[['y']].values).flatten()
 
 def create_sequences(data, input_len, output_len):
     xs, ys = [], []
@@ -186,71 +185,86 @@ def create_sequences(data, input_len, output_len):
 
 input_len = 12
 output_len = forecast_horizon
-X_seq, y_seq = create_sequences(scaled_series, input_len, output_len)
+X_seq, y_seq = create_sequences(scaled_train, input_len, output_len)
 
 X_seq_tensor = torch.tensor(X_seq, dtype=torch.float32).unsqueeze(-1)
 y_seq_tensor = torch.tensor(y_seq, dtype=torch.float32).unsqueeze(-1)
 
-# Split
-train_X = X_seq_tensor[:-1]
-train_y = y_seq_tensor[:-1]
-test_X = X_seq_tensor[-1:].clone()
-test_y = y_seq_tensor[-1:].clone()
+# Final sequence for testing
+test_input = torch.tensor(scaled_full[-(input_len + output_len):-output_len], dtype=torch.float32).unsqueeze(0).unsqueeze(-1)
 
-# Define model
-class ImprovedTransformer(nn.Module):
-    def __init__(self, input_dim=1, d_model=64, nhead=4, num_layers=2, dim_feedforward=128):
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=500):
         super().__init__()
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.pe[:, :x.size(1), :]
+        return x
+
+class TransformerTimeSeries(nn.Module):
+    def __init__(self, input_dim=1, d_model=32, nhead=2, num_layers=2, dim_feedforward=64):
+        super().__init__()
+        self.input_dim = input_dim
+        self.d_model = d_model
         self.embedding = nn.Linear(input_dim, d_model)
-        self.transformer = Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_layers, dim_feedforward=dim_feedforward)
-        self.fc = nn.Linear(d_model, 1)
+        self.pos_encoder = PositionalEncoding(d_model)
+        encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward)
+        self.transformer = TransformerEncoder(encoder_layers, num_layers)
+        self.fc_out = nn.Linear(d_model, output_len)
 
-    def forward(self, src):
-        src = self.embedding(src)
-        src = src.permute(1, 0, 2)  # required by Transformer
-        tgt = torch.zeros_like(src)
-        output = self.transformer(src, tgt)
-        output = output.permute(1, 0, 2)
-        return self.fc(output)
+    def forward(self, x):
+        x = self.embedding(x)
+        x = self.pos_encoder(x)
+        x = self.transformer(x)
+        x = x.mean(dim=1)
+        return self.fc_out(x)
 
-model = ImprovedTransformer()
+model = TransformerTimeSeries()
 loss_fn = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-# Train
+# Train model
 epochs = 80
 for epoch in range(epochs):
     model.train()
     optimizer.zero_grad()
-    output = model(train_X)
-    loss = loss_fn(output, train_y)
+    out = model(X_seq_tensor)
+    loss = loss_fn(out, y_seq_tensor.squeeze())
     loss.backward()
     optimizer.step()
     if epoch % 10 == 0:
-        st.text(f"Improved Transformer Epoch {epoch}, Loss: {loss.item():.4f}")
+        st.text(f"Transformer Epoch {epoch}: loss={loss.item():.4f}")
 
 # Predict
 model.eval()
 with torch.no_grad():
-    pred = model(test_X).squeeze().numpy()
+    pred = model(test_input).squeeze().numpy()
 
-# Rescale
+# Rescale prediction
 pred_rescaled = scaler.inverse_transform(pred.reshape(-1, 1)).flatten()
-true_rescaled = scaler.inverse_transform(test_y.squeeze().numpy().reshape(-1, 1)).flatten()
+true_rescaled = test_df['y'].values[:forecast_horizon]
 
 # Evaluation
-improved_rmse = np.sqrt(mean_squared_error(true_rescaled, pred_rescaled))
-improved_mae = mean_absolute_error(true_rescaled, pred_rescaled)
-st.write(f"### Improved Transformer Forecast RMSE: {improved_rmse:.2f}")
-st.write(f"### Improved Transformer Forecast MAE: {improved_mae:.2f}")
+transformer_rmse = np.sqrt(mean_squared_error(true_rescaled, pred_rescaled))
+transformer_mae = mean_absolute_error(true_rescaled, pred_rescaled)
+
+st.write(f"### Transformer Forecast RMSE: {transformer_rmse:.2f}")
+st.write(f"### Transformer Forecast MAE: {transformer_mae:.2f}")
 
 # Plotting
-st.write("### Improved Transformer Forecast vs Actual")
-fig_it, ax_it = plt.subplots()
-ax_it.plot(test_df.index, true_rescaled, label='Actual', color='black')
-ax_it.plot(test_df.index, pred_rescaled, label='Transformer Forecast', linestyle='--', color='green')
-ax_it.set_title("Improved Transformer Forecast vs Actual")
-ax_it.set_xlabel("Date")
-ax_it.set_ylabel("Value")
-ax_it.legend()
-st.pyplot(fig_it)
+st.write("### Transformer Forecast vs Actual")
+fig_tf, ax_tf = plt.subplots()
+ax_tf.plot(test_df.index[:forecast_horizon], true_rescaled, label='Actual', color='black')
+ax_tf.plot(test_df.index[:forecast_horizon], pred_rescaled, label='Transformer Forecast', linestyle='--', color='purple')
+ax_tf.set_title("Transformer Forecast vs Actual")
+ax_tf.set_xlabel("Date")
+ax_tf.set_ylabel("Value")
+ax_tf.legend()
+st.pyplot(fig_tf)
