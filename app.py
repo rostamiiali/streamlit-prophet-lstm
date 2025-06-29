@@ -209,7 +209,11 @@ try:
 except Exception as e:
     st.error(f"SARIMA evaluation failed: {e}")
     sarima_rmse, sarima_mae = None, None
-st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+if len(y_true) > 0 and len(y_pred) > 0:
+    sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+else:
+    st.warning("SARIMA evaluation skipped: forecast or test data is empty.")
 st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
 st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{sarima_mae:.0f} units/month. Lower values = better accuracy.")
 
