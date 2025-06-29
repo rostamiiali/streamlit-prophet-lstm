@@ -188,9 +188,10 @@ sarima_forecast = pd.Series(sarima_forecast, index=test_df.index)
 sarima_forecast = sarima_forecast.astype(float)
 sarima_forecast = sarima_forecast.fillna(method='ffill').fillna(method='bfill')
 
-# Compute metrics
-sarima_rmse = np.sqrt(mean_squared_error(test_df['y'].astype(float), sarima_forecast))
-sarima_mae = mean_absolute_error(test_df['y'], sarima_forecast)
+sarima_forecast_clean = pd.to_numeric(sarima_forecast, errors='coerce').fillna(method='ffill').fillna(method='bfill')
+test_y_clean = pd.to_numeric(test_df['y'], errors='coerce').fillna(method='ffill').fillna(method='bfill')
+sarima_rmse = np.sqrt(mean_squared_error(test_y_clean, sarima_forecast_clean))
+sarima_mae = mean_absolute_error(test_y_clean, sarima_forecast_clean)
 st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
 st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
 st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{sarima_mae:.0f} units/month. Lower values = better accuracy.")
