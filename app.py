@@ -678,12 +678,20 @@ combined = pd.concat([test_y_clean, sarima_forecast_clean], axis=1).dropna()
 y_true = combined.iloc[:, 0]
 y_pred = combined.iloc[:, 1]
 
-# Defensive RMSE calculation
-if len(y_true) > 0 and len(y_pred) > 0:
-    sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
-else:
-    st.warning("SARIMA evaluation failed: insufficient data for RMSE calculation.")
+try:
+    if len(sarima_forecast) > 0 and len(test_df) > 0:
+        y_true = test_df['y'].astype(float).values
+        y_pred = sarima_forecast.astype(float).values
+
+        if len(y_true) == len(y_pred):
+            sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+            st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+        else:
+            st.warning("SARIMA evaluation skipped: Prediction and actual value lengths do not match.")
+    else:
+        st.warning("SARIMA evaluation skipped: One or both input arrays are empty.")
+except Exception as e:
+    st.error(f"SARIMA evaluation failed: {e}")
 
 # Plot SARIMA forecast
 st.write("### SARIMA Forecast vs Actual")
