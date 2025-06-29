@@ -53,8 +53,7 @@ neural_prophet = NeuralProphet(
     daily_seasonality=False,
     seasonality_mode="multiplicative",
     learning_rate=1.0,
-    epochs=100,
-    country_holidays=None
+    epochs=100
 )
 
 neural_prophet.add_seasonality(name="monthly", period=30.5, fourier_order=10)
