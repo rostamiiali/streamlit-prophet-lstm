@@ -698,10 +698,11 @@ else:
     sarima_rmse = sarima_mae = np.nan
 
 # Display SARIMA metrics if available
-if sarima_rmse is not None and not np.isnan(sarima_rmse):
-    st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+if sarima_mae is not None and not np.isnan(sarima_mae):
+    st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+    st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{sarima_mae:.0f} units/month. Lower values = better accuracy.")
 else:
-    st.warning("SARIMA RMSE not calculated: forecast or test data is empty.")
+    st.warning("SARIMA MAE not calculated: forecast or test data is empty.")
 
 if sarima_mae is not None and not np.isnan(sarima_mae):
     st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
