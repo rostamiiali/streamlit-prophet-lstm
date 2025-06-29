@@ -224,12 +224,15 @@ X_test, y_test = xgb_test[features], xgb_test['y']
 
  # Train model
 xgb_model = xgb.XGBRegressor(n_estimators=150, learning_rate=0.1, max_depth=3)
-xgb_model.fit(
-    X_train, y_train,
-    eval_set=[(X_test, y_test)],
-    early_stopping_rounds=10,
-    verbose=False
-)
+if not X_test.empty and not y_test.empty:
+    xgb_model.fit(
+        X_train, y_train,
+        eval_set=[(X_test, y_test)],
+        early_stopping_rounds=10,
+        verbose=False
+    )
+else:
+    xgb_model.fit(X_train, y_train)
 
 # Forecast
 xgb_pred = xgb_model.predict(X_test)
