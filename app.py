@@ -222,14 +222,13 @@ features = [col for col in xgb_train.columns if col not in ['ds', 'y']]
 X_train, y_train = xgb_train[features], xgb_train['y']
 X_test, y_test = xgb_test[features], xgb_test['y']
 
- # Train model
+# Train model
 xgb_model = xgb.XGBRegressor(n_estimators=150, learning_rate=0.1, max_depth=3)
 if not X_test.empty and not y_test.empty:
     xgb_model.fit(
         X_train.values, y_train.values,
         eval_set=[(X_test.values, y_test.values)],
-        early_stopping_rounds=10,
-        verbose=False
+        early_stopping_rounds=10
     )
 else:
     xgb_model.fit(X_train.values, y_train.values)
