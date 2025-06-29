@@ -226,13 +226,13 @@ X_test, y_test = xgb_test[features], xgb_test['y']
 xgb_model = xgb.XGBRegressor(n_estimators=150, learning_rate=0.1, max_depth=3)
 if not X_test.empty and not y_test.empty:
     xgb_model.fit(
-        X_train.values, y_train.values,
-        eval_set=[(X_test.values, y_test.values)],
+        X_train.to_numpy(), y_train.to_numpy(),
+        eval_set=[(X_test.to_numpy(), y_test.to_numpy())],
         early_stopping_rounds=10,
         verbose=False
     )
 else:
-    xgb_model.fit(X_train.values, y_train.values)
+    xgb_model.fit(X_train.to_numpy(), y_train.to_numpy())
 
 # Forecast
 xgb_pred = xgb_model.predict(X_test)
