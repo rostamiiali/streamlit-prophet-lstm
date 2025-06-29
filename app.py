@@ -2,7 +2,7 @@ from sklearn.preprocessing import MinMaxScaler
 import streamlit as st
 import pandas as pd
 import numpy as np
-from prophet import Prophet
+from neuralprophet import NeuralProphet
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
@@ -45,40 +45,44 @@ train_size = len(df) - forecast_horizon
 train_df = df.iloc[:train_size].copy()
 test_df = df.iloc[train_size:].copy()
 
-# Prophet Model (Expert-tuned)
-prophet = Prophet(
+st.subheader("🔮 NeuralProphet Forecasting (Enhanced)")
+
+neural_prophet = NeuralProphet(
     yearly_seasonality=True,
     weekly_seasonality=False,
-    changepoint_prior_scale=0.1,
-    seasonality_prior_scale=10.0,
-    holidays_prior_scale=10.0,
-    seasonality_mode='multiplicative',
-    daily_seasonality=False
+    daily_seasonality=False,
+    seasonality_mode="multiplicative",
+    learning_rate=1.0,
+    epochs=100,
 )
-prophet.add_seasonality(name='monthly', period=30.5, fourier_order=10)
-prophet.fit(train_df)
-future = prophet.make_future_dataframe(periods=forecast_horizon, freq='MS')
-forecast = prophet.predict(future)
-forecast_df = forecast[['ds', 'yhat']].set_index('ds')
+
+neural_prophet.add_seasonality(name="monthly", period=30.5, fourier_order=10)
+
+metrics = neural_prophet.fit(train_df, freq="MS")
+future = neural_prophet.make_future_dataframe(train_df, periods=forecast_horizon, n_historic_predictions=True)
+forecast = neural_prophet.predict(future)
+
+# Evaluation
+forecast_df = forecast[['ds', 'yhat1']].set_index('ds')
 test_df.set_index('ds', inplace=True)
-forecast_df['yhat'] = forecast_df['yhat'].clip(lower=0).rolling(window=2, min_periods=1).mean()
+forecast_df = forecast_df.rolling(window=2, min_periods=1).mean()
 merged = forecast_df.join(test_df, how='inner')
-rmse = np.sqrt(mean_squared_error(merged['y'], merged['yhat']))
-mae = mean_absolute_error(merged['y'], merged['yhat'])
-st.write(f"### Prophet Forecast RMSE: {rmse:.2f}")
-st.write(f"### Prophet Forecast MAE: {mae:.2f}")
-fig1 = prophet.plot(forecast)
-st.pyplot(fig1)
+neural_rmse = np.sqrt(mean_squared_error(merged['y'], merged['yhat1']))
+neural_mae = mean_absolute_error(merged['y'], merged['yhat1'])
 
-# Show Prophet forecast components (trend, yearly seasonality, monthly seasonality)
-st.subheader("📊 Prophet Forecast Components")
-fig_comp = prophet.plot_components(forecast)
-st.pyplot(fig_comp)
+st.write(f"### NeuralProphet Forecast RMSE: {neural_rmse:.2f}")
+st.write(f"### NeuralProphet Forecast MAE: {neural_mae:.2f}")
 
-# Display prediction intervals for the next periods
-st.subheader("🔮 Prophet Forecast with Confidence Intervals")
-ci_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].set_index('ds')
-st.line_chart(ci_df)
+# Plotting
+st.subheader("📈 NeuralProphet Forecast vs Actual")
+fig_np, ax_np = plt.subplots()
+ax_np.plot(merged.index, merged['y'], label='Actual', color='black')
+ax_np.plot(merged.index, merged['yhat1'], label='NeuralProphet Forecast', linestyle='--', color='purple')
+ax_np.set_title("NeuralProphet Forecast vs Actual")
+ax_np.set_xlabel("Date")
+ax_np.set_ylabel("Value")
+ax_np.legend()
+st.pyplot(fig_np)
 
 st.write("---")
 st.subheader("🔍 SARIMAX Forecasting (Optimized)")
