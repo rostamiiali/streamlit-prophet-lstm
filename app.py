@@ -11,15 +11,24 @@ from statsmodels.tsa.arima.model import ARIMA
 # Add SARIMAX, ExponentialSmoothing, ConvergenceWarning, warnings, ARX imports
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-# Train SARIMAX model
-sarimax_model = SARIMAX(train, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
-sarimax_results = sarimax_model.fit(disp=False)
+# --- SARIMA Forecast Function ---
+def run_sarima_forecast(df):
+    from statsmodels.tsa.statespace.sarimax import SARIMAX
+    df['ds'] = pd.to_datetime(df['ds'])
+    df['y'] = pd.to_numeric(df['y'], errors='coerce')
+    df = df.dropna()
 
-# Forecast
-sarimax_forecast = sarimax_results.forecast(steps=len(test))
+    train_size = int(len(df) * 0.8)
+    train = df.iloc[:train_size]
+    test = df.iloc[train_size:]
 
-# Store or use this forecast
-combined_df["Hybrid"] = sarimax_forecast.values  # If using hybrid logic
+    sarimax_model = SARIMAX(train['y'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+    sarimax_fit = sarimax_model.fit(disp=False)
+
+    forecast = sarimax_fit.forecast(steps=len(test))
+    forecast = pd.DataFrame({'ds': test['ds'], 'yhat': forecast})
+
+    return forecast
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 import warnings
@@ -164,22 +173,12 @@ st.pyplot(fig_hybrid)
 st.write("---")
 st.subheader("🔍 SARIMA Forecasting (Optimized)")
 
-# Use expert parameters without grid search
-sarima_train = train_df['y']
-# Use warnings filter and ConvergenceWarning
-warnings.simplefilter("ignore", ConvergenceWarning)
-sarima_model = SARIMAX(
-    sarima_train,
-    order=(1, 1, 1),
-    seasonal_order=(1, 1, 1, 12),
-    enforce_stationarity=False,
-    enforce_invertibility=False
-)
-sarima_fit = sarima_model.fit(disp=False)
+# Use SARIMA forecast function after data is uploaded and df is prepared
+sarima_forecast_df = run_sarima_forecast(df)
+sarima_forecast_df = sarima_forecast_df.set_index('ds')
 
-# Forecast into the test period
-sarima_forecast = sarima_fit.forecast(steps=forecast_horizon)
-# Align forecast series to test index
+# Align forecast to test_df
+sarima_forecast = sarima_forecast_df['yhat'][-forecast_horizon:]
 sarima_forecast = pd.Series(sarima_forecast.values, index=test_df.index)
 # Cap and smooth
 sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
