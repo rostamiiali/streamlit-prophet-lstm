@@ -8,3 +8,4 @@ prophet
 statsmodels
 fpdf
 xgboost
+neuralprophet
