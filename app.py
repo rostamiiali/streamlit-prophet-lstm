@@ -949,4 +949,3 @@ Use these to choose the most reliable model or share with stakeholders."""
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     pdf_output.write(pdf_bytes)
 
-    st.download_button("⬇️ Download Report", data=pdf_output.getvalue(), file_name="forecast_report.pdf", mime="application/pdf")
