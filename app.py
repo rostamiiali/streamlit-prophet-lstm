@@ -265,6 +265,20 @@ comparison_df = pd.DataFrame({
 
 st.dataframe(comparison_df.style.format({'RMSE': '{:.2f}', 'MAE': '{:.2f}'}))
 
+# Visual Comparison Plot
+st.subheader("📉 Visual Comparison of Model Performance")
+fig_compare, ax_compare = plt.subplots(figsize=(10, 5))
+width = 0.35
+x = np.arange(len(comparison_df['Model']))
+ax_compare.bar(x - width/2, comparison_df['RMSE'], width, label='RMSE', color='lightblue')
+ax_compare.bar(x + width/2, comparison_df['MAE'], width, label='MAE', color='salmon')
+ax_compare.set_xticks(x)
+ax_compare.set_xticklabels(comparison_df['Model'])
+ax_compare.set_ylabel("Error Value")
+ax_compare.set_title("Model Error Comparison")
+ax_compare.legend()
+st.pyplot(fig_compare)
+
 best_model = comparison_df.iloc[0]['Model']
 st.write(f"✅ Based on RMSE, the **best performing model** is: **{best_model}**")
 
