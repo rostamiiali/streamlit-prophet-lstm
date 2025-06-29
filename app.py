@@ -666,27 +666,13 @@ with st.spinner("Running SARIMA Forecast..."):
 # Cap and smooth
 sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
 
-# SARIMA evaluation with safety checks
-test_y_clean = pd.to_numeric(test_df['y'], errors='coerce')
-sarima_forecast_series = pd.Series(sarima_forecast.values, index=test_df.index)
-sarima_forecast_clean = pd.to_numeric(sarima_forecast_series, errors='coerce')
-combined = pd.concat([test_y_clean, sarima_forecast_clean], axis=1).dropna()
-y_true = combined.iloc[:, 0]
-y_pred = combined.iloc[:, 1]
-sarima_rmse = None
-try:
-    y_true = np.array(y_true, dtype=np.float64)
-    y_pred = np.array(y_pred, dtype=np.float64)
-    if len(y_true) > 0 and len(y_pred) > 0:
-        sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    else:
-        raise ValueError("SARIMA evaluation failed: test or forecasted data is empty.")
-except Exception as e:
-    st.error(f"SARIMA evaluation failed: {e}")
 
-# Display RMSE only if successfully calculated
-if sarima_rmse is not None:
+# SARIMA evaluation: robust RMSE calculation with alignment and checks
+if not sarima_forecast.empty and not test_df.empty and len(test_df['y']) == len(sarima_forecast):
+    sarima_rmse = np.sqrt(mean_squared_error(test_df['y'], sarima_forecast))
     st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+else:
+    st.warning("SARIMA RMSE could not be calculated due to empty predictions or mismatched lengths.")
 
 # Plot SARIMA forecast
 st.write("### SARIMA Forecast vs Actual")
