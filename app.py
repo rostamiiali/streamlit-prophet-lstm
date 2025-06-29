@@ -12,6 +12,38 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
+# --- Data Loading and Train/Test Split ---
+# Forecast Range
+forecast_horizon = st.slider("Select forecast horizon (months)", 6, 36, 12)
+
+# Option to Upload or Generate Data
+upload_option = st.radio("Choose input method:", ("Upload CSV", "Use Sample Data"))
+
+if upload_option == "Upload CSV":
+    uploaded_file = st.file_uploader("Upload your time series CSV file (columns: ds, y)", type=["csv"])
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file)
+        df['ds'] = pd.to_datetime(df['ds'])
+    else:
+        st.warning("Please upload a CSV file.")
+        st.stop()
+else:
+    # Generate realistic sample data
+    np.random.seed(42)
+    date_rng = pd.date_range(start='2018-01-01', end='2025-01-01', freq='MS')
+    seasonal = 3000 * np.sin(2 * np.pi * date_rng.month / 12)
+    trend = np.linspace(25000, 35000, len(date_rng))
+    noise = np.random.normal(0, 800, len(date_rng))
+    data = np.clip(trend + seasonal + noise, 10000, 45000)
+    df = pd.DataFrame({'ds': date_rng, 'y': data})
+    df['ds'] = pd.to_datetime(df['ds'])
+
+# Split into train/test based on forecast_horizon
+df = df.sort_values('ds').reset_index(drop=True)
+train_size = len(df) - forecast_horizon
+train_df = df.iloc[:train_size].copy()
+test_df = df.iloc[train_size:].copy()
+
 # Prophet Model (Expert-tuned)
 prophet = Prophet(
     yearly_seasonality=True,
