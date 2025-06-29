@@ -654,54 +654,51 @@ ax_hybrid.legend()
 st.pyplot(fig_hybrid)
 
 
-st.write("---")
-st.subheader("🔍 SARIMA Forecasting (Optimized)")
 
-# SARIMA Forecasting and evaluation with safety checks
-with st.spinner("Running SARIMA Forecast..."):
-    sarima_model = SARIMAX(train_df['y'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
-    sarima_results = sarima_model.fit(disp=False)
-    sarima_forecast_values = sarima_results.forecast(steps=len(test_df))
-    sarima_forecast = pd.Series(sarima_forecast_values, index=test_df.index)
-# Cap and smooth
+# --- SARIMA Block ---
+st.subheader("🔍 SARIMA Forecasting (Optimized)")
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+# Clean train/test split
+train = df.iloc[:-forecast_horizon]
+test  = df.iloc[-forecast_horizon:].copy()
+y_train = train['y'].astype(float).dropna()
+y_test  = test['y'].astype(float).dropna()
+
+model = SARIMAX(
+    y_train,
+    order=(1,1,1),
+    seasonal_order=(1,1,1,12),
+    enforce_stationarity=False,
+    enforce_invertibility=False
+)
+results = model.fit(disp=False)
+fc = results.get_forecast(steps=len(y_test))
+sarima_forecast = fc.predicted_mean
+sarima_forecast.index = y_test.index
+
+# Smooth and clip
 sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
 
+# Metrics
+combined = pd.concat([y_test, sarima_forecast], axis=1).dropna()
+if not combined.empty:
+    y_true = combined.iloc[:,0].values
+    y_pred = combined.iloc[:,1].values
+    sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    sarima_mae  = mean_absolute_error(y_true, y_pred)
+else:
+    sarima_rmse = sarima_mae = np.nan
 
-## SARIMA evaluation: robust RMSE calculation with alignment and checks
-# Ensure both Series are numeric and aligned
-test_y_clean = pd.to_numeric(test_df['y'], errors='coerce')
-sarima_forecast_series = pd.Series(sarima_forecast.values, index=test_df.index)
-sarima_forecast_clean = pd.to_numeric(sarima_forecast_series, errors='coerce')
+st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
 
-# Combine and drop NaNs to ensure equal length
-combined = pd.concat([test_y_clean, sarima_forecast_clean], axis=1).dropna()
-y_true = combined.iloc[:, 0]
-y_pred = combined.iloc[:, 1]
-
-try:
-    if len(sarima_forecast) > 0 and len(test_df) > 0:
-        y_true = test_df['y'].astype(float).values
-        y_pred = sarima_forecast.astype(float).values
-
-        if len(y_true) == len(y_pred):
-            sarima_rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-            st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
-        else:
-            st.warning("SARIMA evaluation skipped: Prediction and actual value lengths do not match.")
-    else:
-        st.warning("SARIMA evaluation skipped: One or both input arrays are empty.")
-except Exception as e:
-    st.error(f"SARIMA evaluation failed: {e}")
-
-# Plot SARIMA forecast
-st.write("### SARIMA Forecast vs Actual")
-fig_sarima, ax_sarima = plt.subplots()
-ax_sarima.plot(test_df.index, test_df['y'], label='Actual', color='black')
-ax_sarima.plot(test_df.index, sarima_forecast, label='SARIMA Forecast', linestyle='--', color='orange')
-ax_sarima.set_title("SARIMA Forecast vs Actual")
-ax_sarima.set_xlabel("Date")
-ax_sarima.set_ylabel("Vaccinations")
-ax_sarima.legend()
+# Plot
+fig_sarima, ax = plt.subplots()
+ax.plot(y_test.index, y_test, label='Actual', color='black')
+ax.plot(sarima_forecast.index, sarima_forecast, label='SARIMA', linestyle='--', color='orange')
+ax.set_title("SARIMA Forecast vs Actual")
+ax.legend()
 st.pyplot(fig_sarima)
 
 # Holt-Winters Model (Robust)
