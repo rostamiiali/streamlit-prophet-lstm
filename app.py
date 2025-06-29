@@ -7,6 +7,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from statsmodels.tsa.arima.model import ARIMA
+
+# For auto_arima
+from pmdarima import auto_arima
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -583,16 +586,27 @@ st.pyplot(fig1)
 st.write("---")
 st.subheader("🔗 ARIMA + Prophet Hybrid")
 prophet_residuals = train_df['y'] - prophet.predict(train_df)['yhat']
-arima_model = ARIMA(prophet_residuals, order=(1,0,0)).fit()
-arima_forecast = arima_model.forecast(steps=forecast_horizon)
-hybrid_forecast = forecast_df['yhat'][-forecast_horizon:] + arima_forecast.values
+# Use auto_arima for ARIMA order selection
+arima_model = auto_arima(
+    prophet_residuals,
+    seasonal=False,
+    trace=True,
+    suppress_warnings=True,
+    stepwise=True
+)
+arima_forecast = arima_model.predict(n_periods=forecast_horizon)
+hybrid_forecast = forecast_df['yhat'][-forecast_horizon:] + arima_forecast
 # Cap negative Hybrid forecast values before metrics
 hybrid_forecast = pd.Series(hybrid_forecast, index=test_df.index).clip(lower=0)
 # Smooth Hybrid forecast (rolling mean, window=2)
 hybrid_forecast = hybrid_forecast.rolling(window=2, min_periods=1).mean()
 combined_df = pd.DataFrame({'ds': test_df.index, 'Hybrid': hybrid_forecast, 'Actual': test_df['y']})
-hybrid_rmse = np.sqrt(mean_squared_error(combined_df['Actual'], combined_df['Hybrid']))
-hybrid_mae = mean_absolute_error(combined_df['Actual'], combined_df['Hybrid'])
+if combined_df['Hybrid'].isnull().any() or combined_df['Actual'].isnull().any():
+    st.warning("⚠️ Hybrid forecast could not be evaluated due to missing values. Try increasing the forecast horizon.")
+    hybrid_rmse = hybrid_mae = np.nan
+else:
+    hybrid_rmse = np.sqrt(mean_squared_error(combined_df['Actual'], combined_df['Hybrid']))
+    hybrid_mae = mean_absolute_error(combined_df['Actual'], combined_df['Hybrid'])
 st.write(f"### Hybrid Forecast RMSE: {hybrid_rmse:.2f}")
 st.write(f"### Hybrid Forecast MAE: {hybrid_mae:.2f}")
 st.markdown(f"ℹ️ The model's predictions deviate from actuals by ~{hybrid_mae:.0f} units/month. Lower values = better accuracy.")
@@ -615,21 +629,19 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 import warnings
 warnings.filterwarnings("ignore")
 
-# Use expert parameters without grid search
+# SARIMA grid search with auto_arima
 sarima_train = train_df['y']
-sarima_model = SARIMAX(
+sarima_model = auto_arima(
     sarima_train,
-    order=(1, 1, 1),
-    seasonal_order=(1, 1, 1, 12),
-    enforce_stationarity=False,
-    enforce_invertibility=False
+    seasonal=True,
+    m=12,
+    trace=True,
+    suppress_warnings=True,
+    stepwise=True
 )
-sarima_fit = sarima_model.fit(disp=False)
-
-# Forecast into the test period
-sarima_forecast = sarima_fit.forecast(steps=forecast_horizon)
+sarima_forecast = sarima_model.predict(n_periods=forecast_horizon)
 # Align forecast series to test index
-sarima_forecast = pd.Series(sarima_forecast.values, index=test_df.index)
+sarima_forecast = pd.Series(sarima_forecast, index=test_df.index)
 # Cap and smooth
 sarima_forecast = sarima_forecast.clip(lower=0).rolling(window=2, min_periods=1).mean().ffill().bfill()
 
@@ -733,16 +745,21 @@ class TransformerTimeSeries(nn.Module):
         self.embedding = nn.Linear(input_dim, model_dim)
         encoder_layer = nn.TransformerEncoderLayer(d_model=model_dim, nhead=num_heads, dropout=dropout)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.dropout = nn.Dropout(0.1)
+        self.norm = nn.LayerNorm(model_dim)
         self.fc = nn.Linear(model_dim, 1)
 
     def forward(self, src):
-        src = self.embedding(src)
-        src = self.transformer(src)
-        return self.fc(src[-1])
+        x = self.embedding(src)
+        x = self.dropout(x)
+        x = self.norm(x)
+        x = self.transformer(x)
+        return self.fc(x[-1])
 
 model = TransformerTimeSeries()
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+# Learning rate tuning (set to 0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 model.train()
 for epoch in range(50):
