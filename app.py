@@ -279,6 +279,12 @@ ax_compare.set_title("Model Error Comparison")
 ax_compare.legend()
 st.pyplot(fig_compare)
 
+st.markdown("""
+**ℹ️ RMSE (Root Mean Squared Error)** represents the square root of the average squared differences between predicted and actual values. It gives higher weight to larger errors.
+
+**ℹ️ MAE (Mean Absolute Error)** measures the average magnitude of errors in a set of predictions, without considering their direction.
+""")
+
 best_model = comparison_df.iloc[0]['Model']
 st.write(f"✅ Based on RMSE, the **best performing model** is: **{best_model}**")
 
