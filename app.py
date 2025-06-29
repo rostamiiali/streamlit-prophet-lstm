@@ -226,9 +226,7 @@ X_test, y_test = xgb_test[features], xgb_test['y']
 xgb_model = xgb.XGBRegressor(n_estimators=150, learning_rate=0.1, max_depth=3)
 if not X_test.empty and not y_test.empty:
     xgb_model.fit(
-        X_train.values, y_train.values,
-        eval_set=[(X_test.values, y_test.values)],
-        early_stopping_rounds=10
+        X_train.values, y_train.values
     )
 else:
     xgb_model.fit(X_train.values, y_train.values)
