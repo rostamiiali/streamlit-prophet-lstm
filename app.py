@@ -137,11 +137,13 @@ hwes_model = ExponentialSmoothing(
     damped_trend=True,
     seasonal="mul",
     seasonal_periods=12,
-    initialization_method="estimated",
+    initialization_method="estimated"
+)
+hwes_fit = hwes_model.fit(
+    optimized=True,
     use_boxcox=True,
     remove_bias=False
 )
-hwes_fit = hwes_model.fit(optimized=True)
 
 # forecast
 hwes_forecast = hwes_fit.forecast(steps=forecast_horizon)
