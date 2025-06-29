@@ -1,4 +1,81 @@
-# LSTM Forecasting (PyTorch) with cyclical time features
+# Prophet Model (Expert-tuned)
+prophet = Prophet(
+    yearly_seasonality=True,
+    weekly_seasonality=False,
+    changepoint_prior_scale=0.1,
+    seasonality_prior_scale=10.0,
+    holidays_prior_scale=10.0,
+    seasonality_mode='multiplicative',
+    daily_seasonality=False
+)
+prophet.add_seasonality(name='monthly', period=30.5, fourier_order=10)
+prophet.fit(train_df)
+future = prophet.make_future_dataframe(periods=forecast_horizon, freq='MS')
+forecast = prophet.predict(future)
+forecast_df = forecast[['ds', 'yhat']].set_index('ds')
+test_df.set_index('ds', inplace=True)
+forecast_df['yhat'] = forecast_df['yhat'].clip(lower=0).rolling(window=2, min_periods=1).mean()
+merged = forecast_df.join(test_df, how='inner')
+rmse = np.sqrt(mean_squared_error(merged['y'], merged['yhat']))
+mae = mean_absolute_error(merged['y'], merged['yhat'])
+st.write(f"### Prophet Forecast RMSE: {rmse:.2f}")
+st.write(f"### Prophet Forecast MAE: {mae:.2f}")
+fig1 = prophet.plot(forecast)
+st.pyplot(fig1)
+
+st.write("---")
+st.subheader("🔗 ARIMA + Prophet Hybrid")
+prophet_residuals = train_df['y'] - prophet.predict(train_df)['yhat']
+arima_model = ARIMA(prophet_residuals, order=(1,0,0)).fit()
+arima_forecast = arima_model.forecast(steps=forecast_horizon)
+hybrid_forecast = forecast_df['yhat'][-forecast_horizon:] + arima_forecast.values
+hybrid_forecast = pd.Series(hybrid_forecast, index=test_df.index).clip(lower=0).rolling(window=2, min_periods=1).mean()
+combined_df = pd.DataFrame({'ds': test_df.index, 'Hybrid': hybrid_forecast, 'Actual': test_df['y']})
+hybrid_rmse = np.sqrt(mean_squared_error(combined_df['Actual'], combined_df['Hybrid']))
+hybrid_mae = mean_absolute_error(combined_df['Actual'], combined_df['Hybrid'])
+st.write(f"### Hybrid Forecast RMSE: {hybrid_rmse:.2f}")
+st.write(f"### Hybrid Forecast MAE: {hybrid_mae:.2f}")
+fig_hybrid, ax_hybrid = plt.subplots()
+ax_hybrid.plot(combined_df['ds'], combined_df['Actual'], label='Actual', color='black')
+ax_hybrid.plot(combined_df['ds'], combined_df['Hybrid'], label='Hybrid Forecast', linestyle='--', color='purple')
+st.pyplot(fig_hybrid)
+
+st.write("---")
+st.subheader("🔍 SARIMA Forecasting (Optimized)")
+sarima_train = train_df['y']
+sarima_model = SARIMAX(
+    sarima_train,
+    order=(1, 1, 1),
+    seasonal_order=(1, 1, 1, 12),
+    enforce_stationarity=False,
+    enforce_invertibility=False
+).fit(disp=False)
+sarima_forecast = sarima_model.forecast(steps=forecast_horizon)
+sarima_forecast = pd.Series(sarima_forecast.values, index=test_df.index).clip(lower=0).rolling(window=2, min_periods=1).ffill().bfill()
+sarima_rmse = np.sqrt(mean_squared_error(test_df['y'], sarima_forecast))
+sarima_mae = mean_absolute_error(test_df['y'], sarima_forecast)
+st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+fig_sarima, ax_sarima = plt.subplots()
+ax_sarima.plot(test_df.index, test_df['y'], label='Actual', color='black')
+ax_sarima.plot(test_df.index, sarima_forecast, label='SARIMA Forecast', linestyle='--', color='orange')
+st.pyplot(fig_sarima)
+
+st.write("---")
+st.subheader("📊 Holt-Winters Forecasting")
+holt_train = train_df['y']
+holt_model = ExponentialSmoothing(holt_train, trend="add", seasonal="add", seasonal_periods=12).fit(smoothing_level=0.7, smoothing_slope=0.2, smoothing_seasonal=0.2)
+holt_forecast = holt_model.forecast(steps=forecast_horizon)
+holt_forecast = pd.Series(holt_forecast.values, index=test_df.index).clip(lower=0).rolling(window=2, min_periods=1).ffill().bfill()
+holt_rmse = np.sqrt(mean_squared_error(test_df['y'], holt_forecast))
+holt_mae = mean_absolute_error(test_df['y'], holt_forecast)
+st.write(f"### Holt-Winters Forecast RMSE: {holt_rmse:.2f}")
+st.write(f"### Holt-Winters Forecast MAE: {holt_mae:.2f}")
+fig_hw, ax_hw = plt.subplots()
+ax_hw.plot(test_df.index, test_df['y'], label='Actual', color='black')
+ax_hw.plot(test_df.index, holt_forecast, label='Holt-Winters Forecast', linestyle='--', color='brown')
+st.pyplot(fig_hw)
+
 st.write("---")
 st.subheader("📉 LSTM Forecasting (PyTorch)")
 
