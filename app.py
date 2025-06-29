@@ -81,7 +81,7 @@ st.pyplot(fig)
 st.write("---")
 st.subheader("🔍 SARIMA Forecasting (Optimized)")
 
-import statsmodels.api as sm
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 # Prepare the series at a fixed monthly frequency
 df_sarima = df.copy()
@@ -93,7 +93,7 @@ y = df_sarima['y'].astype(float)
 train_sarima, test_sarima = y.iloc[:-forecast_horizon], y.iloc[-forecast_horizon:]
 
 # Fit SARIMAX with seasonal period 12
-sarima_model = sm.tsa.statespace.SARIMAX(
+sarima_model = SARIMAX(
     train_sarima,
     order=(1, 1, 1),
     seasonal_order=(1, 1, 1, 12),
