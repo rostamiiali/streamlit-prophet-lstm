@@ -114,17 +114,15 @@ st.write(f"### SARIMAX Forecast MAE: {sarima_mae:.2f}")
 
 # SARIMAX Components Visualization
 st.subheader("🧩 SARIMAX Forecast Components")
-sarimax_trend = sarima_results.level_smoothed
-sarimax_seasonal = sarima_results.seasonal_smoothed
+# Placeholder decomposition for SARIMAX (true components unavailable)
+sarimax_trend = sarima_results.fittedvalues.rolling(window=3, min_periods=1).mean()
 sarimax_resid = sarima_results.resid
 
-fig_sarimax_comp, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+fig_sarimax_comp, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 axs[0].plot(sarimax_trend, label="Trend")
-axs[0].set_title("SARIMAX Trend")
-axs[1].plot(sarimax_seasonal, label="Seasonal", color='orange')
-axs[1].set_title("SARIMAX Seasonal")
-axs[2].plot(sarimax_resid, label="Residuals", color='green')
-axs[2].set_title("SARIMAX Residuals")
+axs[0].set_title("SARIMAX Trend (Rolling Avg)")
+axs[1].plot(sarimax_resid, label="Residuals", color='green')
+axs[1].set_title("SARIMAX Residuals")
 plt.tight_layout()
 st.pyplot(fig_sarimax_comp)
 
