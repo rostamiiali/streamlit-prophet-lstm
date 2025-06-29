@@ -51,20 +51,25 @@ neural_prophet = NeuralProphet(
     yearly_seasonality=True,
     weekly_seasonality=False,
     daily_seasonality=False,
-    seasonality_mode="multiplicative",
-    learning_rate=1.0,
-    epochs=100
+    seasonality_mode="additive",
+    learning_rate=0.01,
+    epochs=200
 )
 
-neural_prophet.add_seasonality(name="monthly", period=30.5, fourier_order=10)
+# neural_prophet.add_seasonality(name="monthly", period=30.5, fourier_order=10)
+
+scaler = MinMaxScaler()
+train_df['y'] = scaler.fit_transform(train_df[['y']])
 
 metrics = neural_prophet.fit(train_df, freq="MS")
 future = neural_prophet.make_future_dataframe(train_df, periods=forecast_horizon, n_historic_predictions=True)
 forecast = neural_prophet.predict(future)
 
-# Evaluation
+forecast['yhat1'] = scaler.inverse_transform(forecast[['yhat1']])
 forecast_df = forecast[['ds', 'yhat1']].set_index('ds')
-test_df.set_index('ds', inplace=True)
+test_df['y'] = scaler.inverse_transform(test_df[['y']])
+
+# Evaluation
 forecast_df = forecast_df.rolling(window=2, min_periods=1).mean()
 merged = forecast_df.join(test_df, how='inner')
 neural_rmse = np.sqrt(mean_squared_error(merged['y'], merged['yhat1']))
