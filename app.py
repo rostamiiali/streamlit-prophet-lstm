@@ -123,6 +123,48 @@ ax_sarima.set_ylabel("Vaccinations")
 ax_sarima.legend()
 st.pyplot(fig_sarima)
 
+# --- Optimized Holt-Winters Exponential Smoothing ---
+st.write("---")
+st.subheader("📊 Holt-Winters Exponential Smoothing (Optimized)")
+
+# prepare the same training series
+hwes_train = train_df['y']
+
+# define optimized model with damped trend, multiplicative seasonality, and Box–Cox
+hwes_model = ExponentialSmoothing(
+    hwes_train,
+    trend="add",
+    damped_trend=True,
+    seasonal="mul",
+    seasonal_periods=12,
+    initialization_method="estimated"
+)
+hwes_fit = hwes_model.fit(
+    optimized=True,
+    use_boxcox=True,
+    remove_bias=False
+)
+
+# forecast
+hwes_forecast = hwes_fit.forecast(steps=forecast_horizon)
+hwes_forecast = pd.Series(hwes_forecast.values, index=test_df.index).clip(lower=0)
+
+# compute metrics
+hwes_rmse = np.sqrt(mean_squared_error(test_df['y'], hwes_forecast))
+hwes_mae = mean_absolute_error(test_df['y'], hwes_forecast)
+st.write(f"### Optimized HWES RMSE: {hwes_rmse:.2f}")
+st.write(f"### Optimized HWES MAE: {hwes_mae:.2f}")
+
+# plot optimized forecast
+fig_hwes_opt, ax_hwes_opt = plt.subplots()
+ax_hwes_opt.plot(test_df.index, test_df['y'], label='Actual', color='black')
+ax_hwes_opt.plot(test_df.index, hwes_forecast, label='Optimized HWES Forecast', linestyle='--', color='brown')
+ax_hwes_opt.set_title("Optimized Holt-Winters Forecast vs Actual")
+ax_hwes_opt.set_xlabel("Date")
+ax_hwes_opt.set_ylabel("Vaccinations")
+ax_hwes_opt.legend()
+st.pyplot(fig_hwes_opt)
+
 st.write("---")
 st.subheader("📊 Holt-Winters Forecasting")
 holt_train = train_df['y']
