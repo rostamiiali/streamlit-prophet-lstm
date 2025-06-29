@@ -4,6 +4,7 @@ numpy
 matplotlib
 scikit-learn
 neuralprophet==0.9.0
+prophet==1.1.7
 statsmodels
 torch
 xgboost
