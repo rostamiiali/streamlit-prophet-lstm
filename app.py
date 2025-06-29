@@ -697,8 +697,14 @@ if not combined.empty:
 else:
     sarima_rmse = sarima_mae = np.nan
 
-st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
-st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+try:
+    st.write(f"### SARIMA Forecast RMSE: {sarima_rmse:.2f}")
+except NameError:
+    st.warning("SARIMA RMSE not calculated due to missing forecast or test data.")
+try:
+    st.write(f"### SARIMA Forecast MAE: {sarima_mae:.2f}")
+except NameError:
+    st.warning("SARIMA MAE not calculated due to missing forecast or test data.")
 
 # Plot
 fig_sarima, ax = plt.subplots()
