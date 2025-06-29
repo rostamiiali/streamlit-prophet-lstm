@@ -1,3 +1,17 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+from prophet import Prophet
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+
 # Prophet Model (Expert-tuned)
 prophet = Prophet(
     yearly_seasonality=True,
@@ -80,10 +94,6 @@ st.write("---")
 st.subheader("📉 LSTM Forecasting (PyTorch)")
 
 from sklearn.preprocessing import MinMaxScaler
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
 
 # Add cyclical month-of-year features
 df_lstm = df.copy()
